@@ -1,0 +1,48 @@
+<h2>DESCRIPTION</h2>
+
+<p>
+<em>v.sites.cont</em> Calculates the contributing area of each point within a vector.
+</p>
+<p>
+This module will calculate the contributing area for each point in a vector layer. In addition, the addon will also calculate the statistics of raster maps within the contributing area.
+</p>
+
+<p>
+Caluculation of the contributing area is performed using the teh flow direction map produced using <em><a href="r.watershed.html">r.watershed</a></em> and is required to determine the contributing area which is undertaken using the <em><a href="r.wateroutlet.html">r.wateroutlet</a></em> modulde.
+</p>
+<p>
+It is recommended that the points within the vector layer are snapped to the stream using the <em><a href="r.stream.snap.html">r.stream.snap</a></em> module to ensure the points are aligned correctly for the calculation. However, this is not required and the contributing area can still be determined for locations not aligned with streams.
+</p>
+<p>
+This module will calculate the contributing area for each point, and if additional raster maps are provided, it will use the contributing area as a <b>raster</b> to mask the other raster maps and calculate the statistics for these maps.
+</p>
+<p> This module calculates statistics using two different methods: </p>
+<p>
+<b> Continous maps </b>
+This option is for maps with continuous values and will calculate the minimum, mean, etc for this map and add columns to the inputted vector map accordingly.
+</p>
+<p>
+<b> Categorical maps </b>
+This option will calculate the area statistics for these maps. This is useful for landclass style maps. It will create a column in the vector layer for each type of unique value in the map and determine the area within of each type within the sub-catchment.
+</p>
+
+<h2>EXAMPLES</h2>
+
+# TODO: Add a working example here...
+# v.sites.cont input=sites direction=direction
+
+
+<h2>SEE ALSO</h2>
+
+<em>
+    <a href="v.surf.bspline.html">v.surf.bspline</a>,
+    <a href="v.outlier.html">v.outlier</a>,
+    <a href="v.lidar.edgedetection.html">v.lidar.edgedetection</a>
+</em>
+
+<h2>AUTHOR</h2>
+
+Jason Lessels
+
+
+<i>Last changed: $Date$</i>
