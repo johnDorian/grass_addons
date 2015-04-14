@@ -3,7 +3,7 @@
 #
 ############################################################################
 #
-# MODULE:       v.streams.netid
+# MODULE:       v.streams.netid.py
 # AUTHOR(S):    Jason Lessels
 # PURPOSE:      Determine and assign network ids to each stream reach.
 #
@@ -28,19 +28,24 @@
 #%  multiple: no
 #%end
 #%option G_OPT_M_DIR
-#%  key: location
-#%  description: Location of the folder to save the netword ID files to.
+#%  key: directory
+#%  description: Location of the folder to save the network ID files to.
 #%  required: yes
 #%  multiple: no
+#%end
+#%option G_OPT_V_FIELD
+#% key: layer
+#% description: Vector layer number to add catchment statistics
+#% answer: 1
+#% guisection: Settings
 #%end
 #%flag
 #% key:c
 #% description: Ignore complex influences
-#% defualt: False
 #%end
 
 
-##TODO:: Add the directory option.
+
 
 
 
@@ -112,7 +117,7 @@ def get_column_ints(vect_name, layer, col_name):
     raw = raw.split("\n")
     return map(int, raw[0:len(raw)-1])
 
-def check_for_columns(table_name, stop_with_complex):
+def check_for_columns(table_name, map_name, stop_with_complex):
 # Get the column names in the table
     raw = grass.read_command("db.columns", table=table_name)
     raw = raw.split("\n")
@@ -123,7 +128,7 @@ def check_for_columns(table_name, stop_with_complex):
             grass.fatal("Map <%s> does not have column named %s" % (map_name,required_cols[i]))
     # Check to make sure that there are no complex influences.
     if 'prev_str03' in raw:
-        if ignore_complex:
+        if stop_with_complex:
             grass.message("A column containing complex influences was found. Module is proceeding as -c flag is set." )
         else:
             grass.fatal("A column containing complex influences was found. Check the map and use -c flag to continue.")
@@ -151,7 +156,7 @@ def main():
     table_name = get_table_name(streams, layer)
     
 
-    check_for_columns(table_name, ignore_complex)
+    check_for_columns(table_name, streams, ignore_complex)
     rid = get_column_ints(streams, layer, 'rid')
     prev_str1 = get_column_ints(streams, layer, 'prev_str01')
     prev_str2 = get_column_ints(streams, layer, 'prev_str02')
