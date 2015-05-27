@@ -55,10 +55,10 @@
 #%end
 
 """
-Created on 12 March 2015
-
-@author: Jason Lessels <jlessels gmail.com>
-"""
+    Created on 12 March 2015
+    
+    @author: Jason Lessels <jlessels gmail.com>
+    """
 
 import sys
 import os
@@ -136,7 +136,7 @@ def get_stats_cont(map_to_query, table_name, cat):
 
 def get_stats_cat(map_name, table_name, cat):
     ### Get the col names - sometimes not all values are found in the sub-catchment.
-    tmp = raster.RasterRow(map_name)
+    tmp = raster.RasterRow(map_name.split('@')[0])
     tmp.has_cats()
     col_names = []
     col_master_name = grass.find_file(name = map_name, element = 'cell')['name']
@@ -171,24 +171,45 @@ def get_catchment_area(map_name, table_name, area_column, cat):
 def check_for_mask():
     if "MASK" in grass.list_grouped('rast')[grass.gisenv()['MAPSET']]:
         grass.fatal(_('There is already a MASK in place.'
-                        'Please remove it before using this module. '))
+                      'Please remove it before using this module. '))
+
+#def get_coords(map_name,layer):
+#    ## Load the vector with the points in it.
+#    data = vector.VectorTopo(map_name) # Create a VectorTopo object
+#    data.open('r', layer = int(layer)) # Open this object for reading
+#    coords = []
+#    for i in range(len(data)):
+#        coords.append(data.read(i+1).coords()) # gives a tuple
+#    data.close()
+#    return coords
+
 
 def get_coords(map_name,layer):
     ## Load the vector with the points in it.
-    data = vector.VectorTopo(map_name) # Create a VectorTopo object
+    data = vector.VectorTopo(map_name.split('@')[0]) # Create a VectorTopo object
     data.open('r', layer = int(layer)) # Open this object for reading
-    coords = []
+    coords = {}
     for i in range(len(data)):
-        coords.append(data.read(i+1).coords()) # gives a tuple
+        cat_number = data.read(i+1).attrs['cat']
+        coords[cat_number] = map(str, data.read(i+1).coords())
     data.close()
     return coords
 
+
+
+
 def get_table_name(map_name, layer):
     ### Test to make sure the vector has the correct layer - and get the table name from it
+    data = vector.VectorTopo(map_name.split('@')[0]) # Create a VectorTopo object
     try:
-        table_name = grass.vector_layer_db(map_name, layer)['name']
+        data.open('r', layer = int(layer)) # Open this object for reading
     except:
-        grass.fatal("Map <%s> does not have layer number %s" % (map_name,layer))
+        grass.fatal("Map <%s> does not have a layer number %s" % (map_name.split('@')[0],layer))
+    try:
+        table_name = data.table.name
+    except:
+        grass.fatal("Map <%s> does not have a table in layer %s" % (map_name.split('@')[0],layer))
+    data.close()
     return table_name
 
 
@@ -197,8 +218,8 @@ def main():
     check_for_mask()
     ## Create a name for the temp file
     tmp_map_name = "tmp_mask_%s" % os.getpid()
-
-
+    
+    
     ## Load the inputs from the user
     sites = options['input']
     direction = options['direction']
@@ -221,35 +242,32 @@ def main():
             map_exists(cat_maps[i], "raster")
             add_column_names_cat(cat_maps[i], vect_name = sites, layer = layer)
 
-    ## Add the area column if it does not already exist.
-    addcolumn = Module('v.db.addcolumn', map=sites, columns="area_km2 double precision", layer =layer)
-
-
-
-
+## Add the area column if it does not already exist.
+addcolumn = Module('v.db.addcolumn', map=sites, columns="area_km2 double precision", layer =layer)
+    
+    
+    
+    # This command now returns a dict with the cat as the key and the coords as a list
     coords = get_coords(sites, layer)
-
-    cat = grass.read_command("v.db.select", map=sites, layer=layer, col='cat', flags='c')
-    cat = cat.split("\n")
-
-
-
-    for i in range(len(coords)):
+    
+    # Loop over each point using the cat of each point.
+    for cat in coords.keys():
         ## This first part creates the basin based on the location.
-        grass.run_command("r.water.outlet", input = direction, output = tmp_map_name, overwrite=True, quiet = True, coordinates =map(str, coords[i]))
+        grass.run_command("r.water.outlet", input = direction, output = tmp_map_name, overwrite=True, quiet = True, coordinates =coords[cat])
         ## Now the area is calculated.
         grass.run_command("r.mask", rast=tmp_map_name, quiet = True)
-        get_catchment_area(tmp_map_name, table_name=table_name, area_column="area_km2", cat=cat[i])
+        get_catchment_area(tmp_map_name, table_name=table_name, area_column="area_km2", cat=cat)
+        
         ## The next section has to loop through all the desired maps to get the stats for each.
         if(isinstance(cont_maps, list)):
             for j in range(len(cont_maps)):
-                get_stats_cont(cont_maps[j], table_name= sites, cat=cat[i])
+                get_stats_cont(cont_maps[j], table_name= sites, cat=cat)
         if(isinstance(cat_maps, list)):
             for j in range(len(cat_maps)):
-                get_stats_cat(cat_maps[j], table_name= sites, cat=cat[i])
+                get_stats_cat(cat_maps[j], table_name= sites, cat=cat)
         #Remove the mask.
         grass.run_command("r.mask", flags="r", quiet = True)
-
+    
     ## Remove the catchment raster.
     grass.run_command("g.remove", name=tmp_map_name, flags="f", type="raster", quiet = True)
 
